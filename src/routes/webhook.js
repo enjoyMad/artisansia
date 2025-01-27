@@ -1,16 +1,19 @@
 const express = require("express");
-const axios = require("axios");
 const router = express.Router();
 const supabase = require("../config/supabase");
 
-const { sendMessageToTelegram } = require("../services/telegramService");
+const { sendMessageToTelegram } = require("../services/telegramService"); // Import correct
 const { agentDevis } = require("../agents/agentDevis");
 const { agentFacturation } = require("../agents/agentFacturation");
 const { agentPlanning } = require("../agents/agentPlanning");
 const { getUserContext, setUserContext, clearUserContext } = require("../services/contextService");
 
-
-// Fonction pour gérer les intentions et les agents
+/**
+ * Fonction pour déterminer l'agent à appeler et répondre à l'utilisateur.
+ * @param {String} text - Texte du message de l'utilisateur.
+ * @param {String} chatId - ID du chat Telegram.
+ * @param {Object} userContext - Contexte de l'utilisateur.
+ */
 async function determineAgentAndRespond(text, chatId, userContext) {
   try {
     let response;
@@ -40,7 +43,7 @@ async function determineAgentAndRespond(text, chatId, userContext) {
         lowerText.includes("impayé")
       ) {
         console.log("Appel à l'agent Facturation...");
-        response = await agentFacturation(text);
+        response = await agentFacturation(text, chatId); // Assure que agentFacturation accepte chatId
       } else if (
         lowerText.includes("rendez-vous") ||
         lowerText.includes("planning") ||
@@ -73,7 +76,10 @@ async function determineAgentAndRespond(text, chatId, userContext) {
   }
 }
 
-// Fonction pour traiter les interactions avec les boutons Telegram
+/**
+ * Fonction pour traiter les interactions avec les boutons Telegram.
+ * @param {Object} callbackQuery - Callback query de Telegram.
+ */
 async function handleCallbackQuery(callbackQuery) {
   try {
     const chatId = callbackQuery.message.chat.id;
@@ -111,7 +117,9 @@ async function handleCallbackQuery(callbackQuery) {
   }
 }
 
-// Route pour gérer les messages Telegram
+/**
+ * Route pour gérer les messages Telegram.
+ */
 router.post("/telegram", async (req, res) => {
   try {
     const { message, callback_query } = req.body;

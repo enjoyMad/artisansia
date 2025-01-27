@@ -1,8 +1,14 @@
 const supabase = require('../config/supabase');
 const { queryOpenAI } = require('../services/openaiService');
 const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
-const { sendMessageToTelegram } = require("../services/telegramService");
+const { sendMessageToTelegram } = require('../services/telegramService'); // Correction de l'importation
 
+/**
+ * Agent pour gérer la création de devis.
+ * @param {String} userPrompt - Message de l'utilisateur.
+ * @param {String} chatId - ID du chat Telegram.
+ * @returns {String|null} - Réponse à envoyer ou null si la réponse est gérée via des boutons.
+ */
 async function agentDevis(userPrompt, chatId) {
   try {
     // Étape 1 : Vérification si un contexte existe pour cet utilisateur
@@ -10,7 +16,7 @@ async function agentDevis(userPrompt, chatId) {
 
     // Si le contexte indique une action en cours
     if (userContext && userContext.pendingAction === "create_devis") {
-      const { service, prix_unitaire, quantite, total } = userContext;
+      const { service, prix_unitaire, quantite, total, nom_client } = userContext;
 
       // Si l'utilisateur confirme le devis
       if (userPrompt.toLowerCase() === "oui") {
@@ -18,7 +24,7 @@ async function agentDevis(userPrompt, chatId) {
           .from('devis')
           .insert([
             {
-              nom_client: userContext.nom_client || "Client inconnu", // Utilisation du nom du client si présent
+              nom_client: nom_client || "Client inconnu", // Utilisation du nom du client si présent
               service,
               prix_unitaire,
               quantite,
