@@ -1,6 +1,4 @@
-const supabase = require('../config/supabase');
-const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
-const { sendMessageToTelegram } = require('../services/telegramService'); // Import correct
+const supabase = require("../config/supabase");
 
 /**
  * Agent pour gérer la facturation.
@@ -10,14 +8,14 @@ const { sendMessageToTelegram } = require('../services/telegramService'); // Imp
  */
 async function agentFacturation(userPrompt, chatId) {
   try {
-    // Exemple de logique pour relancer une facture impayée
+    // Rechercher les factures impayées
     const { data: factures, error } = await supabase
-      .from('factures')
-      .select('*')
-      .eq('statut', 'impayée');
+      .from("factures")
+      .select("*")
+      .eq("statut", "impayée");
 
     if (error) {
-      console.error('Erreur Supabase (récupération factures) :', error);
+      console.error("Erreur Supabase (récupération factures) :", error);
       return "Une erreur est survenue lors de la récupération des factures.";
     }
 
@@ -25,14 +23,15 @@ async function agentFacturation(userPrompt, chatId) {
       return "Il n'y a aucune facture impayée pour le moment.";
     }
 
-    let response = "Factures impayées :\n";
+    // Construire une réponse avec les factures impayées
+    let response = "Voici les factures impayées :\n";
     factures.forEach(facture => {
-      response += `- Facture #${facture.id} pour ${facture.nom_client} : ${facture.montant}€\n`;
+      response += `- Facture #${facture.id} pour **${facture.nom_client}** : **${facture.montant}€**\n`;
     });
 
     return response;
   } catch (error) {
-    console.error('Erreur dans l’agent Facturation :', error);
+    console.error("Erreur dans l’agent Facturation :", error);
     return "Une erreur est survenue lors du traitement de votre demande.";
   }
 }
