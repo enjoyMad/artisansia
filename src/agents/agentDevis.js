@@ -1,49 +1,89 @@
 const supabase = require('../config/supabase');
 const { queryOpenAI } = require('../services/openaiService');
+const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
+const { sendMessageToTelegram } = require('../routes/webhook'); // Pour envoyer des messages interactifs
 
-async function agentDevis(userPrompt) {
+async function agentDevis(userPrompt, chatId) {
   try {
-    // Étape 1 : Vérification des informations dans le message utilisateur
-    const keywords = ["service", "prix", "quantité"];
-    const hasEnoughInfo = keywords.every((kw) => userPrompt.toLowerCase().includes(kw));
+    // Étape 1 : Vérification si un contexte existe pour cet utilisateur
+    const userContext = await getUserContext(chatId);
 
-    if (!hasEnoughInfo) {
-      return "Pour créer un devis, j'ai besoin de plus d'informations : précisez le service à proposer, le prix unitaire, et la quantité.";
+    // Si le contexte indique une action en cours
+    if (userContext && userContext.pendingAction === "create_devis") {
+      const { service, prix_unitaire, quantite, total } = userContext;
+
+      // Si l'utilisateur confirme le devis
+      if (userPrompt.toLowerCase() === "oui") {
+        const { data, error } = await supabase
+          .from('devis')
+          .insert([
+            {
+              nom_client: userContext.nom_client || "Client inconnu", // Utilisation du nom du client si présent
+              service,
+              prix_unitaire,
+              quantite,
+              total,
+              date_creation: new Date()
+            }
+          ]);
+
+        if (error) {
+          console.error('Erreur Supabase (création devis) :', error);
+          return "Une erreur est survenue lors de la création du devis.";
+        }
+
+        // Effacer le contexte après la création
+        await clearUserContext(chatId);
+
+        return `Le devis a été créé avec succès : Service - ${service}, Prix unitaire - ${prix_unitaire}€, Quantité - ${quantite}, Total - ${total}€.`;
+      }
+
+      // Si l'utilisateur annule le devis
+      if (userPrompt.toLowerCase() === "non") {
+        await clearUserContext(chatId);
+        return "Le devis a été annulé. Si vous souhaitez recommencer, fournissez les détails du devis.";
+      }
+
+      // Si une réponse autre que Oui/Non est donnée
+      return "Veuillez répondre par Oui ou Non pour confirmer ou annuler la création du devis.";
     }
 
-    // Étape 2 : Récupération des données Supabase
-    const { data: devis, error } = await supabase
-      .from('devis')
-      .select('*');
+    // Étape 2 : Nouvelle demande sans contexte
+    const serviceMatch = userPrompt.match(/service:\s*([\w\s]+)/i);
+    const prixMatch = userPrompt.match(/prix:\s*(\d+)/i);
+    const quantiteMatch = userPrompt.match(/quantité:\s*(\d+)/i);
 
-    if (error) {
-      console.error('Erreur Supabase :', error);
-      return "Une erreur est survenue lors de la récupération des données des devis.";
+    if (!serviceMatch || !prixMatch || !quantiteMatch) {
+      // Si les informations sont incomplètes, demander plus de détails
+      await setUserContext(chatId, { pendingAction: "create_devis" });
+      return "Pour créer un devis, j'ai besoin de plus d'informations. Veuillez préciser le service, le prix unitaire et la quantité, par exemple : 'service: peinture, prix: 50, quantité: 2'.";
     }
 
-    // Étape 3 : Préparer les données pour le prompt
-    let ragData = "Aucun devis trouvé.";
-    if (devis && devis.length > 0) {
-      // Formater les données pour le prompt
-      const formattedDevis = devis
-        .map((d) => `Devis #${d.id}: client=${d.nom_client}, service=${d.service}, prix=${d.prix_unitaire}€, quantité=${d.quantite}`)
-        .join("\n");
-      ragData = `Liste des devis existants :\n${formattedDevis}`;
-    }
+    // Étape 3 : Extraction des informations et confirmation
+    const service = serviceMatch[1].trim();
+    const prix = parseFloat(prixMatch[1]);
+    const quantite = parseInt(quantiteMatch[1], 10);
+    const total = prix * quantite;
 
-    // Étape 4 : Construire le prompt
-    const finalPrompt = `
-      Tu es un assistant spécialisé dans la création de devis pour artisans.
-      Voici les données pertinentes :
-      ${ragData}
+    // Enregistrer le contexte et demander confirmation
+    await setUserContext(chatId, {
+      pendingAction: "create_devis",
+      nom_client: "Client inconnu", // À remplacer si le client est précisé
+      service,
+      prix_unitaire: prix,
+      quantite,
+      total
+    });
 
-      Question de l'utilisateur :
-      ${userPrompt}
-    `;
+    // Envoyer un message avec des boutons interactifs pour confirmer ou annuler
+    await sendMessageToTelegram(chatId, `Je vais créer un devis pour ${service} (Prix : ${prix}€, Quantité : ${quantite}, Total : ${total}€). Voulez-vous confirmer ?`, [
+      [
+        { text: "Oui", callback_data: "confirm_devis" },
+        { text: "Non", callback_data: "cancel_devis" }
+      ]
+    ]);
 
-    // Étape 5 : Appeler OpenAI pour obtenir une réponse
-    const response = await queryOpenAI(finalPrompt, 'devis');
-    return response;
+    return null; // Pas besoin de renvoyer un texte puisque les boutons prennent le relais
   } catch (error) {
     console.error('Erreur dans l’agent Devis :', error);
     return "Une erreur est survenue lors du traitement de la demande.";

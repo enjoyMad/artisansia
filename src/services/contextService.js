@@ -55,4 +55,20 @@ async function clearUserContext(chatId) {
   return true;
 }
 
+/**
+ * Mettre à jour le contexte pour une confirmation
+ * @param {String} chatId
+ * @param {String} action - Action à confirmer (ex. : create_devis)
+ * @param {Object} data - Données associées à l'action
+ */
+async function setConfirmation(chatId, action, data) {
+  const context = {
+    pendingAction: action,
+    confirmationRequired: true,
+    data
+  };
+  await setUserContext(chatId, context);
+}
+
+
 module.exports = { getUserContext, setUserContext, clearUserContext };
