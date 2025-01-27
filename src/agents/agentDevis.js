@@ -1,5 +1,4 @@
 const supabase = require('../config/supabase');
-const { queryOpenAI } = require('../services/openaiService');
 const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
 const { sendMessageToTelegram } = require('../services/telegramService'); // Correction de l'importation
 
@@ -20,7 +19,7 @@ async function agentDevis(userPrompt, chatId) {
 
       // Si l'utilisateur confirme le devis
       if (userPrompt.toLowerCase() === "oui") {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('devis')
           .insert([
             {
@@ -28,8 +27,8 @@ async function agentDevis(userPrompt, chatId) {
               service,
               prix_unitaire,
               quantite,
-              total,
               date_creation: new Date()
+              // 'total' est une colonne générée, donc ne pas l'insérer
             }
           ]);
 

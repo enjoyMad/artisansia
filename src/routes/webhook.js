@@ -92,10 +92,10 @@ async function handleCallbackQuery(callbackQuery) {
       if (userContext && userContext.pendingAction === "create_devis") {
         const { nom_client, service, prix_unitaire, quantite, total } = userContext.data;
 
-        // Insérer le devis dans la base de données
+        // Insérer le devis dans la base de données (sans 'total' si c'est une colonne générée)
         const { error } = await supabase
           .from("devis")
-          .insert([{ nom_client, service, prix_unitaire, quantite, total, date_creation: new Date() }]);
+          .insert([{ nom_client, service, prix_unitaire, quantite, date_creation: new Date() }]); // Suppression de 'total'
 
         if (error) {
           console.error("Erreur lors de la création du devis :", error);

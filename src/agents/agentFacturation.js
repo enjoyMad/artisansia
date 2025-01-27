@@ -1,5 +1,4 @@
 const supabase = require('../config/supabase');
-const { queryOpenAI } = require('../services/openaiService');
 const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
 const { sendMessageToTelegram } = require('../services/telegramService'); // Import correct
 
