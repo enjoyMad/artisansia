@@ -1,7 +1,7 @@
 const supabase = require('../config/supabase');
 const { queryOpenAI } = require('../services/openaiService');
 const { setUserContext, clearUserContext, getUserContext } = require('../services/contextService');
-const { sendMessageToTelegram } = require('../routes/webhook'); // Pour envoyer des messages interactifs
+const { sendMessageToTelegram } = require("../services/telegramService");
 
 async function agentDevis(userPrompt, chatId) {
   try {

@@ -1,38 +1,14 @@
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
+const supabase = require("../config/supabase");
 
+const { sendMessageToTelegram } = require("../services/telegramService");
 const { agentDevis } = require("../agents/agentDevis");
 const { agentFacturation } = require("../agents/agentFacturation");
 const { agentPlanning } = require("../agents/agentPlanning");
 const { getUserContext, setUserContext, clearUserContext } = require("../services/contextService");
 
-// Fonction pour envoyer un message à Telegram
-async function sendMessageToTelegram(chatId, text, buttons = null) {
-  try {
-    const TELEGRAM_API_URL = `https://api.telegram.org/bot${process.env.TELEGRAM_API_KEY}/sendMessage`;
-    const payload = {
-      chat_id: chatId,
-      text,
-      parse_mode: "Markdown", // Permet de mettre en forme le texte
-    };
-
-    // Ajoute les boutons interactifs si fournis
-    if (buttons) {
-      payload.reply_markup = {
-        inline_keyboard: buttons,
-      };
-    }
-
-    const response = await axios.post(TELEGRAM_API_URL, payload);
-    console.log("Message envoyé à Telegram :", response.data);
-  } catch (error) {
-    console.error(
-      "Erreur lors de l'envoi du message à Telegram :",
-      error.response?.data || error.message
-    );
-  }
-}
 
 // Fonction pour gérer les intentions et les agents
 async function determineAgentAndRespond(text, chatId, userContext) {
